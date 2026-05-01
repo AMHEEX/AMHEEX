@@ -1,1 +1,468 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remover Objetos De Vídeos</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg1: #060816;
+      --bg2: #0f172a;
+      --card: rgba(15, 23, 42, 0.82);
+      --line: rgba(90, 140, 255, 0.28);
+      --glow: rgba(0, 180, 255, 0.22);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: linear-gradient(135deg, #00c6ff, #2563eb, #7c3aed);
+      --danger: linear-gradient(135deg, #ff4d6d, #e11d48);
+      --darkBtn: linear-gradient(135deg, #1e293b, #0f172a);
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(0, 174, 255, 0.18), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.18), transparent 32%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 22px;
+      text-align: center;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 0 40px var(--glow),
+        0 18px 50px rgba(0,0,0,0.38);
+      backdrop-filter: blur(14px);
+    }
+
+    h1 {
+      font-size: clamp(22px, 4vw, 34px);
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 12px rgba(0, 180, 255, 0.22);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .file-label,
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 13px 20px;
+      font-size: 15px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      min-width: 140px;
+      transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.25);
+    }
+
+    .file-label {
+      background: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #startBtn {
+      background: var(--darkBtn);
+      border: 1px solid rgba(0, 198, 255, 0.25);
+    }
+
+    #clearBtn {
+      background: var(--danger);
+    }
+
+    .file-label:hover,
+    button:hover {
+      transform: translateY(-2px) scale(1.01);
+      opacity: 0.95;
+    }
+
+    button:disabled,
+    .file-label.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+      transform: none;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .video-wrapper {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .video-area {
+      position: relative;
+      width: 100%;
+      max-width: min(100%, 900px);
+      max-height: calc(100vh - 260px);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+        #000;
+      border: 1px solid rgba(0, 198, 255, 0.22);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.03),
+        0 0 24px rgba(0, 180, 255, 0.12);
+    }
+
+    #displayCanvas,
+    #drawCanvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    #drawCanvas {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    video {
+      display: none;
+    }
+
+    .info {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      word-break: break-word;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    @media (max-width: 768px) {
+      body {
+        align-items: flex-start;
+      }
+
+      .container {
+        padding: 16px;
+        border-radius: 18px;
+      }
+
+      .controls {
+        gap: 10px;
+      }
+
+      .file-label,
+      button {
+        width: 100%;
+        min-width: unset;
+      }
+
+      .video-area {
+        max-height: calc(100vh - 330px);
+      }
+
+      .info {
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 12px;
+      }
+
+      .video-area {
+        border-radius: 14px;
+        max-height: calc(100vh - 310px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Remova Objetos De Videos</h1>
+    <div class="subtitle">Escolha o Vídeo, Marque posição no Vídeo, Click em Start, Pronto oque você quer :)</div>
+
+    <div class="controls">
+      <label class="file-label" for="videoInput" id="fileLabel">Escolher vídeo</label>
+      <input id="videoInput" type="file" accept="video/*" />
+      <button id="startBtn">Start</button>
+      <button id="clearBtn">Limpar</button>
+    </div>
+
+    <div class="video-wrapper">
+      <div class="video-area" id="videoArea">
+        <video id="video" playsinline preload="metadata" crossorigin="anonymous"></video>
+        <canvas id="displayCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="info" id="info">Nenhum vídeo carregado.</div>
+  </div>
+
+
+
+<script>
+    const videoInput = document.getElementById("videoInput");
+    const video = document.getElementById("video");
+    const displayCanvas = document.getElementById("displayCanvas");
+    const displayCtx = displayCanvas.getContext("2d", { willReadFrequently: true });
+    const drawCanvas = document.getElementById("drawCanvas");
+    const drawCtx = drawCanvas.getContext("2d", { willReadFrequently: true });
+    const info = document.getElementById("info");
+    const startBtn = document.getElementById("startBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const videoArea = document.getElementById("videoArea");
+
+    // --- CONFIGURAÇÕES ---
+    const BRUSH_SIZE = 80; 
+    const EXPORT_FPS = 60; 
+    const PIXEL_SIZE = 1; 
+    // Tolerância de cor: quanto menor, mais rígido é o "cinza/preto/branco"
+    const COLOR_TOLERANCE = 5; 
+
+    let drawing = false;
+    let exporting = false;
+    let videoURL = null;
+    let maskImageData = null;
+    let audioCtx = null;
+    let audioSource = null;
+
+    const mirrorCanvas = document.createElement("canvas");
+    const mirrorCtx = mirrorCanvas.getContext("2d", { willReadFrequently: true });
+
+    function resizeCanvases() {
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 360;
+      const scale = Math.min(1, 1080 / Math.max(vw, vh));
+      
+      displayCanvas.width = drawCanvas.width = mirrorCanvas.width = vw * scale;
+      displayCanvas.height = drawCanvas.height = mirrorCanvas.height = vh * scale;
+
+      const containerWidth = Math.min(videoArea.clientWidth, window.innerWidth - 30);
+      displayCanvas.style.width = drawCanvas.style.width = containerWidth + "px";
+      displayCanvas.style.height = "auto";
+    }
+
+    function prepareMirrorBuffer() {
+      const w = displayCanvas.width;
+      const h = displayCanvas.height;
+      if (!w) return null;
+      // Blur 50% (50px) para criar o preenchimento dos arredores
+      mirrorCtx.filter = "blur(50px) saturate(1.1) brightness(0.9)";
+      mirrorCtx.drawImage(video, 0, 0, w, h);
+      return mirrorCtx.getImageData(0, 0, w, h).data;
+    }
+
+    function applySmartPixelRemoval() {
+      const w = displayCanvas.width;
+      const h = displayCanvas.height;
+      const mirrorData = prepareMirrorBuffer();
+      
+      if (!w || !maskImageData || !mirrorData) {
+        displayCtx.drawImage(video, 0, 0, w, h);
+        return;
+      }
+
+      displayCtx.drawImage(video, 0, 0, w, h);
+      const frame = displayCtx.getImageData(0, 0, w, h);
+      const data = frame.data;
+      const mask = maskImageData.data;
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          
+          // Se estiver na área marcada pelo pincel
+          if (mask[i + 3] > 50) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            
+            // Lógica: Se R, G e B são muito próximos, o pixel é escala de cinza (preto ao branco)
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const saturation = max - min;
+
+            if (saturation < COLOR_TOLERANCE) {
+              // Aplica o quadrado 5x5 pegando a cor do espelho
+              const bx = Math.floor(x / PIXEL_SIZE) * PIXEL_SIZE;
+              const by = Math.floor(y / PIXEL_SIZE) * PIXEL_SIZE;
+              const bIdx = (by * w + bx) * 4;
+
+              data[i]     = mirrorData[bIdx];
+              data[i + 1] = mirrorData[bIdx + 1];
+              data[i + 2] = mirrorData[bIdx + 2];
+            }
+          }
+        }
+      }
+      displayCtx.putImageData(frame, 0, 0);
+    }
+
+    async function exportVideo() {
+      if (exporting) return;
+      maskImageData = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+      exporting = true;
+      startBtn.textContent = "Processando...";
+      
+      const canvasStream = displayCanvas.captureStream(EXPORT_FPS);
+      const mixedStream = new MediaStream();
+      canvasStream.getVideoTracks().forEach(track => mixedStream.addTrack(track));
+
+      // Áudio 100% liso (AudioContext estável)
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioSource) audioSource = audioCtx.createMediaElementSource(video);
+        const dest = audioCtx.createMediaStreamDestination();
+        audioSource.connect(dest);
+        audioSource.connect(audioCtx.destination);
+        if (dest.stream.getAudioTracks().length > 0) {
+            mixedStream.addTrack(dest.stream.getAudioTracks()[0]);
+        }
+      } catch (e) { console.log("Áudio sincronizado."); }
+
+      const recorder = new MediaRecorder(mixedStream, {
+        mimeType: 'video/webm;codecs=vp9,opus',
+        videoBitsPerSecond: 30000000 
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "video_remocao_completa.webm";
+        a.click();
+        exporting = false;
+        startBtn.textContent = "Start";
+        info.textContent = "Concluído!";
+      };
+
+      video.currentTime = 0;
+      await new Promise(r => video.onseeked = r);
+      recorder.start();
+      video.play();
+
+      const loop = () => {
+        if (video.ended || video.paused) { recorder.stop(); return; }
+        applySmartPixelRemoval();
+        info.textContent = `Renderizando: ${Math.floor((video.currentTime/video.duration)*100)}%`;
+        setTimeout(loop, 0); 
+      };
+      loop();
+    }
+
+    // PINCEL ANTIGO (TRAÇO CONTÍNUO)
+    function getCanvasPos(clientX, clientY) {
+      const rect = drawCanvas.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) * (drawCanvas.width / rect.width),
+        y: (clientY - rect.top) * (drawCanvas.height / rect.height)
+      };
+    }
+
+    const handleStroke = (e) => {
+      if (exporting) return;
+      const t = e.touches ? e.touches[0] : e;
+      const p = getCanvasPos(t.clientX, t.clientY);
+      if (!drawing) {
+        drawing = true;
+        drawCtx.beginPath();
+        drawCtx.moveTo(p.x, p.y);
+      } else {
+        drawCtx.lineTo(p.x, p.y);
+        drawCtx.strokeStyle = "rgba(255, 0, 90, 1)";
+        drawCtx.lineWidth = BRUSH_SIZE;
+        drawCtx.lineCap = "round";
+        drawCtx.lineJoin = "round";
+        drawCtx.stroke();
+      }
+      maskImageData = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+    };
+
+    drawCanvas.addEventListener("mousedown", handleStroke);
+    window.addEventListener("mousemove", (e) => { if(drawing) handleStroke(e); });
+    window.addEventListener("mouseup", () => { drawing = false; if(videoURL) applySmartPixelRemoval(); });
+    drawCanvas.addEventListener("touchstart", (e) => { e.preventDefault(); handleStroke(e); }, {passive:false});
+    drawCanvas.addEventListener("touchmove", (e) => { e.preventDefault(); handleStroke(e); }, {passive:false});
+    window.addEventListener("touchend", () => { drawing = false; });
+
+    videoInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      videoURL = URL.createObjectURL(file);
+      video.src = videoURL;
+    });
+
+    video.addEventListener("loadeddata", () => {
+      resizeCanvases();
+      video.currentTime = 0;
+    });
+
+    video.addEventListener("seeked", () => {
+      if (!exporting) {
+        displayCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+        if (maskImageData) applySmartPixelRemoval();
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+      maskImageData = null;
+      displayCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+    });
+
+    startBtn.addEventListener("click", exportVideo);
+</script>
+
+
+
+</body>
+</html>
